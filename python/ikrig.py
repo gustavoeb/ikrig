@@ -97,7 +97,12 @@ def FK2encoded(g_mat, root_jnt, dir_jnt, eff_jnt, chain_length):
         ik_upv *= g_mat.inverse()
         ik_upv = ik_upv.normal()
 
-        return ik_root, ik_eff, ik_upv
+        # Localize eff rotation
+        ik_eff_rot = om.MQuaternion()
+        mat = eff_jnt * g_mat.inverse()
+        ik_eff_rot.setValue(mat.homogenize())
+
+        return ik_root, ik_eff, ik_upv, ik_eff_rot
 
 def encoded2IK(encoded_pose_array, char_scale, chain_scale):
     ik_chain_root = om.MVector(encoded_pose_array[0] * char_scale,
@@ -134,13 +139,12 @@ class ikrig_encode(om.MPxNode):
             # get xfo from rest pose 
         mat_hips_delta = mat_hips_rest.inverse() * mat_hips
             # use xfo to transform direction vector
-        upv = om.MVector([.0,1.,.0])
         direction = om.MVector([.0,.0,1.])*mat_hips_delta
             # constraint direction to xz plane
         direction.y = 0
             # get all vectors
         zaxis = direction.normal()
-        yaxis = (zaxis^upv.normal())^zaxis.normal()
+        yaxis = om.MVector([.0,1.,.0])
         xaxis = yaxis^zaxis.normal()
             # build global matrix
         g_tr_x = mat_hips[12]
@@ -158,49 +162,30 @@ class ikrig_encode(om.MPxNode):
         g_ori = g_ori.setValue(g_mat.homogenize())
 
         # chains
-        ik_spine_root, ik_spine_eff, ik_spine_upv = FK2encoded(g_mat, mat_hips, mat_spine, mat_neck, length_spine)
+        ik_spine_root, ik_spine_eff, ik_spine_upv, ik_spine_eff_rot = FK2encoded(g_mat, mat_hips, mat_spine, mat_neck, length_spine)
             # lower body roots are offsets to hips
         lower_body_mat = om.MMatrix(g_mat)
         lower_body_mat[12] = mat_hips[12]
         lower_body_mat[13] = mat_hips[13]
         lower_body_mat[14] = mat_hips[14]
-        ik_leg_root_L, ik_leg_eff_L, ik_leg_upv_L = FK2encoded(lower_body_mat, mat_leg_L, mat_shin_L, mat_foot_L, length_leg_L)
-        ik_leg_root_R, ik_leg_eff_R, ik_leg_upv_R = FK2encoded(lower_body_mat, mat_leg_R, mat_shin_R, mat_foot_R, length_leg_R)
+        ik_leg_root_L, ik_leg_eff_L, ik_leg_upv_L, ik_leg_eff_rot_L = FK2encoded(lower_body_mat, mat_leg_L, mat_shin_L, mat_foot_L, length_leg_L)
+        ik_leg_root_R, ik_leg_eff_R, ik_leg_upv_R, ik_leg_eff_rot_R = FK2encoded(lower_body_mat, mat_leg_R, mat_shin_R, mat_foot_R, length_leg_R)
             # upper body roots are offsets to neck
         upper_body_mat = om.MMatrix(g_mat)
         upper_body_mat[12] = mat_neck[12]
         upper_body_mat[13] = mat_neck[13]
         upper_body_mat[14] = mat_neck[14]
-        ik_arm_root_L, ik_arm_eff_L, ik_arm_upv_L = FK2encoded(upper_body_mat, mat_shoulder_L, mat_elbow_L, mat_hand_L, length_arm_L)
-        ik_arm_root_R, ik_arm_eff_R, ik_arm_upv_R = FK2encoded(upper_body_mat, mat_shoulder_R, mat_elbow_R, mat_hand_R, length_arm_R)
-        ik_neck_root, ik_neck_eff, ik_neck_upv = FK2encoded(upper_body_mat, mat_neck, mat_neck_mid, mat_head, length_neck)
-
-        ik_Spine_eff_rot = om.MQuaternion()
-        mat = mat_neck * g_mat.inverse()
-        ik_Spine_eff_rot.setValue(mat.homogenize())
-        ik_Neck_eff_rot = om.MQuaternion()
-        mat = mat_head * g_mat.inverse()
-        ik_Neck_eff_rot.setValue(mat.homogenize())
-        ik_Leg_eff_rot_L = om.MQuaternion()
-        mat = mat_foot_L * g_mat.inverse()
-        ik_Leg_eff_rot_L.setValue(mat.homogenize())
-        ik_Leg_eff_rot_R = om.MQuaternion()
-        mat = mat_foot_R * g_mat.inverse()
-        ik_Leg_eff_rot_R.setValue(mat.homogenize())
-        ik_Arm_eff_rot_L = om.MQuaternion()
-        mat = mat_hand_L * g_mat.inverse()
-        ik_Arm_eff_rot_L.setValue(mat.homogenize())
-        ik_Arm_eff_rot_R = om.MQuaternion()
-        mat = mat_hand_R * g_mat.inverse()
-        ik_Arm_eff_rot_R.setValue(mat.homogenize())
+        ik_arm_root_L, ik_arm_eff_L, ik_arm_upv_L, ik_arm_eff_rot_L = FK2encoded(upper_body_mat, mat_shoulder_L, mat_elbow_L, mat_hand_L, length_arm_L)
+        ik_arm_root_R, ik_arm_eff_R, ik_arm_upv_R, ik_arm_eff_rot_R = FK2encoded(upper_body_mat, mat_shoulder_R, mat_elbow_R, mat_hand_R, length_arm_R)
+        ik_neck_root, ik_neck_eff, ik_neck_upv, ik_neck_eff_rot = FK2encoded(upper_body_mat, mat_neck, mat_neck_mid, mat_head, length_neck)
 
         out_components = [(g_tr_x, g_tr_z), g_ori,
-                          ik_spine_root, ik_spine_eff, ik_spine_upv, ik_Spine_eff_rot,
-                          ik_neck_root, ik_neck_eff, ik_neck_upv, ik_Neck_eff_rot,
-                          ik_leg_root_L, ik_leg_eff_L, ik_leg_upv_L, ik_Leg_eff_rot_L,
-                          ik_leg_root_R, ik_leg_eff_R, ik_leg_upv_R, ik_Leg_eff_rot_R,
-                          ik_arm_root_L, ik_arm_eff_L, ik_arm_upv_L, ik_Arm_eff_rot_L,
-                          ik_arm_root_R, ik_arm_eff_R, ik_arm_upv_R, ik_Arm_eff_rot_R]
+                          ik_spine_root, ik_spine_eff, ik_spine_upv, ik_spine_eff_rot,
+                          ik_neck_root, ik_neck_eff, ik_neck_upv, ik_neck_eff_rot,
+                          ik_leg_root_L, ik_leg_eff_L, ik_leg_upv_L, ik_leg_eff_rot_L,
+                          ik_leg_root_R, ik_leg_eff_R, ik_leg_upv_R, ik_leg_eff_rot_R,
+                          ik_arm_root_L, ik_arm_eff_L, ik_arm_upv_L, ik_arm_eff_rot_L,
+                          ik_arm_root_R, ik_arm_eff_R, ik_arm_upv_R, ik_arm_eff_rot_R]
 
         result_handle = datablock.outputValue(ikrig_encode.result)
         output_array = om.MFnDoubleArrayData(result_handle.data())
