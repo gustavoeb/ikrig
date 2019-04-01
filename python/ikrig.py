@@ -7,9 +7,7 @@ as described by Bereznyak, 2016.
 
 Author: Gustavo E Boehs
 Published @ http://3deeplearner.com
-June, 2018
-
-Licensed under the GPL3 license.
+March, 2019
 '''
 
 import maya.api.OpenMaya as om
