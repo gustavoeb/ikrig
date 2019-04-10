@@ -156,7 +156,7 @@ class ikrig_encode(om.MPxNode):
                     [yaxis[0],yaxis[1],yaxis[2],0],
                     [zaxis[0],zaxis[1],zaxis[2],0],
                     [g_tr_x, g_tr_y, g_tr_z, 1]])
-        g_ori = om.MQuaternion()
+        g_ori = om.MEulerRotation()
         g_ori = g_ori.setValue(g_mat.homogenize())
 
         # chains
@@ -177,7 +177,7 @@ class ikrig_encode(om.MPxNode):
         ik_arm_root_R, ik_arm_eff_R, ik_arm_upv_R, ik_arm_eff_rot_R = FK2encoded(upper_body_mat, mat_shoulder_R, mat_elbow_R, mat_hand_R, length_arm_R)
         ik_neck_root, ik_neck_eff, ik_neck_upv, ik_neck_eff_rot = FK2encoded(upper_body_mat, mat_neck, mat_neck_mid, mat_head, length_neck)
 
-        out_components = [(g_tr_x, g_tr_z), g_ori,
+        out_components = [(g_tr_x, g_tr_z, g_ori.y),
                           ik_spine_root, ik_spine_eff, ik_spine_upv, ik_spine_eff_rot,
                           ik_neck_root, ik_neck_eff, ik_neck_upv, ik_neck_eff_rot,
                           ik_leg_root_L, ik_leg_eff_L, ik_leg_upv_L, ik_leg_eff_rot_L,
@@ -293,10 +293,7 @@ class ikrig_decode(om.MPxNode):
         g_tr_x = encoded_pose_array[0]
         g_tr_y = 0
         g_tr_z = encoded_pose_array[1]
-        g_ori = om.MQuaternion(encoded_pose_array[2],
-                               encoded_pose_array[3],
-                               encoded_pose_array[4],
-                               encoded_pose_array[5])
+        g_ori = om.MEulerRotation(0, encoded_pose_array[2], 0)
         g_mat = g_ori.asMatrix()
         g_mat[12] = g_tr_x
         g_mat[13] = g_tr_y
@@ -304,23 +301,23 @@ class ikrig_decode(om.MPxNode):
         g_mat *= offset_mat
         global_mat_Handle.setMMatrix(g_mat)
 
-        ik_spine_root,ik_spine_eff, ik_spine_upv, ik_spine_eff_rot = encoded2IK(encoded_pose_array[6:19],
+        ik_spine_root,ik_spine_eff, ik_spine_upv, ik_spine_eff_rot = encoded2IK(encoded_pose_array[3:16],
                                                                                 height_hips,
                                                                                 length_spine)
         ik_spine_root.y += height_hips
-        ik_neck_root,ik_neck_eff,ik_neck_upv,ik_neck_eff_rot = encoded2IK(encoded_pose_array[19:32],
+        ik_neck_root,ik_neck_eff,ik_neck_upv,ik_neck_eff_rot = encoded2IK(encoded_pose_array[16:29],
                                                                           height_hips,
                                                                           length_neck)
-        ik_leg_root_L,ik_leg_eff_L,ik_leg_upv_L,ik_leg_eff_rot_L = encoded2IK(encoded_pose_array[32:45],
+        ik_leg_root_L,ik_leg_eff_L,ik_leg_upv_L,ik_leg_eff_rot_L = encoded2IK(encoded_pose_array[29:42],
                                                                               height_hips,
                                                                               length_leg_L)
-        ik_leg_root_R,ik_leg_eff_R,ik_leg_upv_R,ik_leg_eff_rot_R = encoded2IK(encoded_pose_array[45:58],
+        ik_leg_root_R,ik_leg_eff_R,ik_leg_upv_R,ik_leg_eff_rot_R = encoded2IK(encoded_pose_array[42:55],
                                                                               height_hips,
                                                                               length_leg_R)
-        ik_arm_root_L,ik_arm_eff_L,ik_arm_upv_L,ik_arm_eff_rot_L = encoded2IK(encoded_pose_array[58:71],
+        ik_arm_root_L,ik_arm_eff_L,ik_arm_upv_L,ik_arm_eff_rot_L = encoded2IK(encoded_pose_array[55:68],
                                                                               height_hips,
                                                                               length_arm_L)
-        ik_arm_root_R,ik_arm_eff_R,ik_arm_upv_R,ik_arm_eff_rot_R = encoded2IK(encoded_pose_array[71:84],
+        ik_arm_root_R,ik_arm_eff_R,ik_arm_upv_R,ik_arm_eff_rot_R = encoded2IK(encoded_pose_array[68:81],
                                                                               height_hips,
                                                                               length_arm_R)
 
