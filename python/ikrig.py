@@ -132,6 +132,8 @@ class ikrig_encode(om.MPxNode):
         for attr in mat_attrs:
             handle = datablock.inputValue(getattr(ikrig_encode,attr))
             exec(attr + "= handle.asMatrix()")
+        mirrorHandle = datablock.inputValue(ikrig_encode.mirror)
+        mirror = mirrorHandle.asBool()
 
         # Global xfo with default hips height and 2d orientation
             # get xfo from rest pose 
@@ -177,13 +179,36 @@ class ikrig_encode(om.MPxNode):
         ik_arm_root_R, ik_arm_eff_R, ik_arm_upv_R, ik_arm_eff_rot_R = FK2encoded(upper_body_mat, mat_shoulder_R, mat_elbow_R, mat_hand_R, length_arm_R)
         ik_neck_root, ik_neck_eff, ik_neck_upv, ik_neck_eff_rot = FK2encoded(upper_body_mat, mat_neck, mat_neck_mid, mat_head, length_neck)
 
-        out_components = [(g_tr_x, g_tr_z, g_ori.y),
-                          ik_spine_root, ik_spine_eff, ik_spine_upv, ik_spine_eff_rot,
-                          ik_neck_root, ik_neck_eff, ik_neck_upv, ik_neck_eff_rot,
-                          ik_leg_root_L, ik_leg_eff_L, ik_leg_upv_L, ik_leg_eff_rot_L,
-                          ik_leg_root_R, ik_leg_eff_R, ik_leg_upv_R, ik_leg_eff_rot_R,
-                          ik_arm_root_L, ik_arm_eff_L, ik_arm_upv_L, ik_arm_eff_rot_L,
-                          ik_arm_root_R, ik_arm_eff_R, ik_arm_upv_R, ik_arm_eff_rot_R]
+        global_components = (g_tr_x, g_tr_z, g_ori.y)
+        pos_components = [ik_spine_root, ik_spine_eff, ik_spine_upv, 
+                          ik_neck_root, ik_neck_eff, ik_neck_upv,
+                          ik_leg_root_L, ik_leg_eff_L, ik_leg_upv_L, 
+                          ik_leg_root_R, ik_leg_eff_R, ik_leg_upv_R, 
+                          ik_arm_root_L, ik_arm_eff_L, ik_arm_upv_L, 
+                          ik_arm_root_R, ik_arm_eff_R, ik_arm_upv_R]
+        
+        rot_components = [ik_spine_eff_rot,
+                         ik_neck_eff_rot,
+                         ik_leg_eff_rot_L,
+                         ik_leg_eff_rot_R,
+                         ik_arm_eff_rot_L,
+                         ik_arm_eff_rot_R]
+        
+        if mirror:
+            global_components = (-g_tr_x, g_tr_z, -g_ori.y)
+            for component in pos_components:
+                component[0] *= -1
+            for component in rot_components:
+                component[0] *= -1
+                component[3] *= -1
+
+        out_components = [global_components,
+                          pos_components[0], pos_components[1], pos_components[2], rot_components[0],
+                          pos_components[3], pos_components[4], pos_components[5], rot_components[1],
+                          pos_components[6], pos_components[7], pos_components[8], rot_components[2],
+                          pos_components[9], pos_components[10], pos_components[11], rot_components[3],
+                          pos_components[12], pos_components[13], pos_components[14], rot_components[4],
+                          pos_components[15], pos_components[16], pos_components[17], rot_components[5]]
 
         result_handle = datablock.outputValue(ikrig_encode.result)
         output_array = om.MFnDoubleArrayData(result_handle.data())
@@ -204,6 +229,7 @@ def init_encode():
     tAttr = om.MFnTypedAttribute()
     kDoubleArray = om.MFnNumericData.kDoubleArray
     kFloat = om.MFnNumericData.kFloat
+    kBool = om.MFnNumericData.kBoolean
 
     def add_nAttr(params):
         setattr(ikrig_encode,
@@ -222,6 +248,10 @@ def init_encode():
         mAttr.connectable = True
         mAttr.hidden = False
         return getattr(ikrig_encode, params[0])
+
+    ikrig_encode.mirror = nAttr.create('mirror', 'mi', kBool, 0)
+    nAttr.hidden = False
+    nAttr.keyable = True
 
     in_attributes = []
 
@@ -263,11 +293,13 @@ def init_encode():
     # (3) Add the attributes to the node
     for attribute in in_attributes:
         ikrig_encode.addAttribute(attribute)
+    ikrig_encode.addAttribute(ikrig_encode.mirror)
     ikrig_encode.addAttribute(ikrig_encode.result)
 
     # (4) Set the attribute dependencies
     for attribute in in_attributes:
         ikrig_encode.attributeAffects(attribute, ikrig_encode.result)
+    ikrig_encode.attributeAffects(ikrig_encode.mirror, ikrig_encode.result)
 
 class ikrig_decode(om.MPxNode):
     '''Decode parameters of an IKRig into
