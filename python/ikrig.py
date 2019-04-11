@@ -201,14 +201,22 @@ class ikrig_encode(om.MPxNode):
             for component in rot_components:
                 component[0] *= -1
                 component[3] *= -1
-
-        out_components = [global_components,
-                          pos_components[0], pos_components[1], pos_components[2], rot_components[0],
-                          pos_components[3], pos_components[4], pos_components[5], rot_components[1],
-                          pos_components[6], pos_components[7], pos_components[8], rot_components[2],
-                          pos_components[9], pos_components[10], pos_components[11], rot_components[3],
-                          pos_components[12], pos_components[13], pos_components[14], rot_components[4],
-                          pos_components[15], pos_components[16], pos_components[17], rot_components[5]]
+            out_components = [global_components,
+                            pos_components[0], pos_components[1], pos_components[2], rot_components[0],
+                            pos_components[3], pos_components[4], pos_components[5], rot_components[1],
+                            pos_components[9], pos_components[10], pos_components[11], rot_components[3],
+                            pos_components[6], pos_components[7], pos_components[8], rot_components[2],
+                            pos_components[15], pos_components[16], pos_components[17], rot_components[5],
+                            pos_components[12], pos_components[13], pos_components[14], rot_components[4]]
+        else:
+            out_components = [global_components,
+                pos_components[0], pos_components[1], pos_components[2], rot_components[0],
+                pos_components[3], pos_components[4], pos_components[5], rot_components[1],
+                pos_components[6], pos_components[7], pos_components[8], rot_components[2],
+                pos_components[9], pos_components[10], pos_components[11], rot_components[3],
+                pos_components[12], pos_components[13], pos_components[14], rot_components[4],
+                pos_components[15], pos_components[16], pos_components[17], rot_components[5]]
+                          
 
         result_handle = datablock.outputValue(ikrig_encode.result)
         output_array = om.MFnDoubleArrayData(result_handle.data())
