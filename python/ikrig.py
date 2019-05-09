@@ -179,7 +179,7 @@ class ikrig_encode(om.MPxNode):
         ik_arm_root_R, ik_arm_eff_R, ik_arm_upv_R, ik_arm_eff_rot_R = FK2encoded(upper_body_mat, mat_shoulder_R, mat_elbow_R, mat_hand_R, length_arm_R)
         ik_neck_root, ik_neck_eff, ik_neck_upv, ik_neck_eff_rot = FK2encoded(upper_body_mat, mat_neck, mat_neck_mid, mat_head, length_neck)
 
-        global_components = (g_tr_x, g_tr_z, g_ori.y)
+        global_components = (g_tr_x/height_hips, g_tr_z/height_hips, g_ori.y)
         pos_components = [ik_spine_root, ik_spine_eff, ik_spine_upv, 
                           ik_neck_root, ik_neck_eff, ik_neck_upv,
                           ik_leg_root_L, ik_leg_eff_L, ik_leg_upv_L, 
@@ -335,9 +335,9 @@ class ikrig_decode(om.MPxNode):
         g_tr_z = encoded_pose_array[1]
         g_ori = om.MEulerRotation(0, encoded_pose_array[2], 0)
         g_mat = g_ori.asMatrix()
-        g_mat[12] = g_tr_x
+        g_mat[12] = g_tr_x*height_hips
         g_mat[13] = g_tr_y
-        g_mat[14] = g_tr_z
+        g_mat[14] = g_tr_z*height_hips
         g_mat *= offset_mat
         global_mat_Handle.setMMatrix(g_mat)
 
