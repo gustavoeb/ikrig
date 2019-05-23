@@ -328,7 +328,9 @@ class ikrig_decode(om.MPxNode):
             exec(attr + "_Handle = handle")
         global_mat_Handle = datablock.outputValue(ikrig_decode.global_mat)
 
-        # print(encoded_pose_array.array())
+        if len(encoded_pose_array) != 81:
+            return
+        
         # Global character transform
         g_tr_x = encoded_pose_array[0]
         g_tr_y = 0

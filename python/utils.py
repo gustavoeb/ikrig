@@ -34,6 +34,9 @@ class csvToScalarArray(om.MPxNode):
         frame = int(np.float32(frHandle.asFloat()))
         result_handle = data.outputValue(csvToScalarArray.result)
 
+        if filePath == "":
+            return
+
         # (2) Get CSV data
         data_cache.getOrLoad(filePath)
 
