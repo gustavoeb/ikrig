@@ -182,6 +182,8 @@ class ikrig_encode(om.MPxNode):
             exec(attr + "= handle.asMatrix()")
         mirrorHandle = datablock.inputValue(ikrig_encode.mirror)
         mirror = mirrorHandle.asBool()
+        normalize_global_xfoHandle = datablock.inputValue(ikrig_encode.normalize_global_xfo)
+        normalize_global_xfo = normalize_global_xfoHandle.asBool()
 
         # Global xfo with default hips height and 2d orientation
             # get xfo from rest pose 
@@ -227,7 +229,11 @@ class ikrig_encode(om.MPxNode):
         ik_arm_root_R, ik_arm_eff_R, ik_arm_upv_R, ik_arm_eff_rot_R = FK2encoded(upper_body_mat, root_offset_arm_R, mat_shoulder_R, mat_elbow_R, mat_hand_R, length_arm_R)
         ik_neck_root, ik_neck_eff, ik_neck_upv, ik_neck_eff_rot = FK2encoded(upper_body_mat, root_offset_neck, mat_neck, mat_neck_mid, mat_head, length_neck)
 
-        global_components = (g_tr_x/height_hips, g_tr_z/height_hips, g_ori.y)
+        if normalize_global_xfo:
+            g_tr_x /= height_hips
+            g_tr_z /= height_hips
+
+        global_components = (g_tr_x, g_tr_z, g_ori.y)
         pos_components = [ik_spine_root, ik_spine_eff, ik_spine_upv, 
                           ik_neck_eff, ik_neck_upv,
                           ik_leg_eff_L, ik_leg_upv_L, 
@@ -243,7 +249,7 @@ class ikrig_encode(om.MPxNode):
                          ik_arm_root_R, ik_arm_eff_rot_R]
         
         if mirror:
-            global_components = (-g_tr_x/height_hips, g_tr_z/height_hips, -g_ori.y)
+            global_components = (-g_tr_x, g_tr_z, -g_ori.y)
             for component in pos_components:
                 component[0] *= -1
             for component in rot_components:
@@ -309,6 +315,9 @@ def init_encode():
     ikrig_encode.mirror = nAttr.create('mirror', 'mi', kBool, 0)
     nAttr.hidden = False
     nAttr.keyable = True
+    ikrig_encode.normalize_global_xfo = nAttr.create('normalize_global_xfo', 'nx', kBool, 1)
+    nAttr.hidden = False
+    nAttr.keyable = True
 
     in_attributes = []
 
@@ -357,12 +366,14 @@ def init_encode():
     for attribute in in_attributes:
         ikrig_encode.addAttribute(attribute)
     ikrig_encode.addAttribute(ikrig_encode.mirror)
+    ikrig_encode.addAttribute(ikrig_encode.normalize_global_xfo)
     ikrig_encode.addAttribute(ikrig_encode.result)
 
     # (4) Set the attribute dependencies
     for attribute in in_attributes:
         ikrig_encode.attributeAffects(attribute, ikrig_encode.result)
     ikrig_encode.attributeAffects(ikrig_encode.mirror, ikrig_encode.result)
+    ikrig_encode.attributeAffects(ikrig_encode.normalize_global_xfo, ikrig_encode.result)
 
 class ikrig_decode(om.MPxNode):
     '''Decode parameters of an IKRig into
@@ -386,6 +397,8 @@ class ikrig_decode(om.MPxNode):
             handle = datablock.outputValue(getattr(ikrig_decode,attr))
             exec(attr + "_Handle = handle")
         global_mat_Handle = datablock.outputValue(ikrig_decode.global_mat)
+        normalized_global_xfoHandle = datablock.inputValue(ikrig_decode.normalized_global_xfo)
+        normalized_global_xfo = normalized_global_xfoHandle.asBool()
 
         if len(encoded_pose_array) != 86:
             print('Encoded pose with wrong length, expecting 86 dimensions got ' + str(len(encoded_pose_array)))
@@ -397,9 +410,12 @@ class ikrig_decode(om.MPxNode):
         g_tr_z = encoded_pose_array[1]
         g_ori = om.MEulerRotation(0, encoded_pose_array[2], 0)
         g_mat = g_ori.asMatrix()
-        g_mat[12] = g_tr_x*height_hips
+        if normalized_global_xfo:
+            g_tr_x *= height_hips
+            g_tr_z *= height_hips
+        g_mat[12] = g_tr_x
         g_mat[13] = g_tr_y
-        g_mat[14] = g_tr_z*height_hips
+        g_mat[14] = g_tr_z
         g_mat *= offset_mat
         global_mat_Handle.setMMatrix(g_mat)
 
@@ -494,6 +510,7 @@ def init_decode():
     k3Float = om.MFnNumericData.k3Float   # Maya's float type
     kAngle = om.MFnUnitAttribute.kAngle
     kDoubleArray = om.MFnNumericData.kDoubleArray
+    kBool = om.MFnNumericData.kBoolean
 
         # Setup attribute helper functions and classes
     def add_nAttr(params):
@@ -559,6 +576,9 @@ def init_decode():
     in_attributes.append(add_nAttr(('length_leg_R','l3', kFloat)))
     in_attributes.append(add_nAttr(('length_arm_L','l4', kFloat)))
     in_attributes.append(add_nAttr(('length_arm_R','l5', kFloat)))
+    ikrig_decode.normalized_global_xfo = nAttr.create('normalized_global_xfo', 'nx', kBool, 1)
+    nAttr.hidden = False
+    nAttr.keyable = True
 
     # (3) Setup the output attributes
     out_attributes = []
@@ -598,10 +618,12 @@ def init_decode():
         ikrig_decode.addAttribute(attribute)
     for attribute in out_attributes:
         ikrig_decode.addAttribute(attribute)
+    ikrig_decode.addAttribute(ikrig_decode.normalized_global_xfo)
 
     # (5) Set the attribute dependencies
-    for in_attribute in in_attributes:
-        for out_attribute in out_attributes:
+    for out_attribute in out_attributes:
+        ikrig_decode.attributeAffects(ikrig_decode.normalized_global_xfo, out_attribute)
+        for in_attribute in in_attributes:
             ikrig_decode.attributeAffects(in_attribute, out_attribute)
 
 def _toplugin(mobject):
