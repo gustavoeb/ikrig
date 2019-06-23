@@ -1,4 +1,5 @@
 from maya import cmds
+import maya.api.OpenMaya as om
 
 def print_named_values(node_name):
     encoded = cmds.getAttr(node_name +'.result')
