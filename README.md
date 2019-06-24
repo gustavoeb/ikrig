@@ -3,5 +3,5 @@ An implementation of some components of the IK Rig as described by Ubisoft's Ale
 
 The reason for this implementation and the way it is designed, is to provide an alternative representation to the human pose for Machine Learning purposes. The IK Rig, as implemented here, provides a representation of the pose that is invariant to the actor's proportions and its global position and orientation.
 
-Video summary: https://www.youtube.com/watch?v=BaOKa0cT1mo
+Video summary: https://www.youtube.com/watch?v=BaOKa0cT1mo (1) | https://www.youtube.com/watch?v=WkEouctytd4 (2)
 Written summary: https://3deeplearner.com/ik-rig-implementation-for-ml/
