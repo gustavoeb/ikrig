@@ -232,6 +232,9 @@ class ikrig_encode(om.MPxNode):
         if normalize_global_xfo:
             g_tr_x /= height_hips
             g_tr_z /= height_hips
+        
+        if g_ori.y < 0: # avoid flips on y rotation
+            g_ori.y += math.radians(360)
 
         global_components = (g_tr_x, g_tr_z, g_ori.y)
         pos_components = [ik_spine_root, ik_spine_eff, ik_spine_upv, 
